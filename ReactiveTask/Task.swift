@@ -296,6 +296,24 @@ public enum TaskEvent<T>: TaskEventType {
 			return .Success(transform(value))
 		}
 	}
+	
+	/// Transforms a success event into further TaskEvents
+	/// - discussion: Allows the result from a previous TaskEvent to be piped to a following Task
+	public func map<U>(@noescape transform: T -> TaskEvent<U>) -> TaskEvent<U> {
+		switch self {
+		case let .Launch(task):
+			return .Launch(task)
+			
+		case let .StandardOutput(data):
+			return .StandardOutput(data)
+			
+		case let .StandardError(data):
+			return .StandardError(data)
+			
+		case let .Success(value):
+			return transform(value)
+		}
+	}
 
 	/// Convenience operator for mapping TaskEvents to SignalProducers.
 	public func producerMap<U, Error>(@noescape transform: T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
@@ -305,12 +323,28 @@ public enum TaskEvent<T>: TaskEventType {
 			
 		case let .StandardOutput(data):
 			return .init(value: .StandardOutput(data))
-
+			
 		case let .StandardError(data):
 			return .init(value: .StandardError(data))
-
+			
 		case let .Success(value):
 			return transform(value).map(TaskEvent<U>.Success)
+		}
+	}
+	
+	public func producerMap<U, Error>(@noescape transform: T -> SignalProducer<TaskEvent<U>, Error>) -> SignalProducer<TaskEvent<U>, Error> {
+		switch self {
+		case let .Launch(task):
+			return .init(value: .Launch(task))
+			
+		case let .StandardOutput(data):
+			return .init(value: .StandardOutput(data))
+			
+		case let .StandardError(data):
+			return .init(value: .StandardError(data))
+			
+		case let .Success(value):
+			return transform(value)
 		}
 	}
 }
